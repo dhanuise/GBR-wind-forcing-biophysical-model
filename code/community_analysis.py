@@ -4,9 +4,6 @@ from matplotlib.collections import PatchCollection
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 import numpy as np
 from scipy import sparse
-from slim4_util.visualization import (
-    polygon_shp_to_patch, polygon_shp_centroids
-)
 from osgeo import ogr, osr, gdal
 import igraph as ig
 from typing import List, Tuple
