@@ -11,7 +11,44 @@ import matplotlib.font_manager as fm
 import statsmodels.formula.api as smf
 import pandas as pd
 import geopandas as gpd
-from slim4_util.utm_zone import find_utm_zone_shp
+from osgeo import ogr
+
+def find_utm_zone(lon: float, lat: float) -> str:
+    """
+    Find the UTM zone of a point with given longitude and latitude
+
+    Parameters:
+        lon -- longitude of the point
+        lat -- latitude of the point
+    """
+    copy_utm_zones()
+    pnt = ogr.Geometry(ogr.wkbPoint)
+    pnt.AddPoint(lon,lat)
+    ds = ogr.GetDriverByName('ESRI Shapefile').Open(f'{UTM_ZONES_BASENAME}.shp',0)
+    lyr = ds.GetLayer()
+    utm_zone = None
+    for f in lyr:
+        geom = f.geometry()
+        if geom.Contains(pnt):
+            utm_zone = f.GetField('ZONE')
+            break
+    ds = None
+    if utm_zone is None:
+        raise ValueError(f'No UTM zone found for point ({lon},{lat})')
+    hemisphere = '+south' if lat < 0 else '+north'
+    return f'+proj=utm +zone={utm_zone} {hemisphere} +ellps=WGS84 +units=m'
+
+def find_utm_zone_shp(shape_file: str) -> str:
+    """
+    Return the UTM zone of a shapefile
+
+    Parameters:
+        shape_file -- path to the shapefile
+    """
+    ds = ogr.GetDriverByName('ESRI Shapefile').Open(shape_file,0)
+    lyr = ds.GetLayer()
+    minx, maxx, miny, maxy = lyr.GetExtent()
+    return find_utm_zone((minx+maxx)/2, (miny+maxy)/2)
 
 # %%
 # Parameters
