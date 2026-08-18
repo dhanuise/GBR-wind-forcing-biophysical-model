@@ -7,6 +7,7 @@ from scipy import sparse
 from slim4_util.visualization import (
     polygon_shp_to_patch, polygon_shp_centroids
 )
+from osgeo import ogr, osr, gdal
 import igraph as ig
 from typing import List, Tuple
 import leidenalg as la
@@ -15,9 +16,44 @@ import networkx as nx
 import matplotlib.font_manager as fm
 import geopandas as gpd
 
-ft_country = fm.FontProperties(fname="/export/homes/dhanuise/GBR/Fonts/metropolis-bold.otf")
+def _process_shp(
+    shpfile: str, function: Callable[[ogr.Geometry],list],
+    proj_to: Optional[osr.SpatialReference] = None
+) -> list:
+    """
+    Function that loops through the geometres of a shapefile, process them
+    and returns a list of the processed outputs
+    """
+    driver = ogr.GetDriverByName("ESRI Shapefile")
+    src = driver.Open(shpfile, 0)
+    lyr = src.GetLayer()
+    result = []
+    if proj_to is not None:
+        if int(gdal.__version__.split(".")[0]) >= 3 :
+            proj_to.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+        trans = osr.CoordinateTransformation(lyr.GetSpatialRef(), proj_to)
+    for feature in lyr:
+        geom = feature.geometry()
+        if proj_to is not None:
+            geom.Transform(trans)
+        result.extend(function(geom))
+    return result
+
+def polygon_shp_to_patch(
+    shpfile: str, proj_to: Optional[osr.SpatialReference] = None
+) -> List[PathPatch]:
+    """Converts the polygon of a shapefile into a list of PathPatch objects"""
+    return _process_shp(shpfile, polys_to_path, proj_to)
+
+def polygon_shp_centroids(
+    shpfile: str, proj_to: Optional[osr.SpatialReference] = None
+) -> List[Tuple[float,float]]:
+    """Return the list of centroids of the polygons of a shapefile"""
+    return _process_shp(shpfile, get_centroid, proj_to)
+
+ft_country = fm.FontProperties(fname="path_to/Fonts/metropolis-bold.otf")
 ft_country.set_size(15)
-ft_country2 = fm.FontProperties(fname="/export/homes/dhanuise/GBR/Fonts/metropolis-bold.otf")
+ft_country2 = fm.FontProperties(fname="path_to/Fonts/metropolis-bold.otf")
 ft_country2.set_size(13)
 
 # %%
